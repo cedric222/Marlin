@@ -43,6 +43,12 @@
   #define SOFT_PWM_SCALE 0
 #endif
 
+#ifdef LGT_MAC
+#include"LGT_SCR.h"
+	extern bool tartemp_flag;
+#endif // LGT_MAC
+
+
 #define ENABLE_TEMPERATURE_INTERRUPT()  SBI(TIMSK0, OCIE0B)
 #define DISABLE_TEMPERATURE_INTERRUPT() CBI(TIMSK0, OCIE0B)
 #define TEMPERATURE_ISR_ENABLED()      TEST(TIMSK0, OCIE0B)
@@ -402,6 +408,10 @@ class Temperature {
     #endif
 
     static void setTargetHotend(const int16_t celsius, const uint8_t e) {
+	#ifdef LGT_MAC
+		tartemp_flag = true;
+	#endif // LGT_MAC
+
       #if HOTENDS == 1
         UNUSED(e);
       #endif
@@ -444,6 +454,9 @@ class Temperature {
       FORCE_INLINE static bool isCoolingBed()     { return target_temperature_bed < current_temperature_bed; }
 
       static void setTargetBed(const int16_t celsius) {
+		#ifdef LGT_MAC
+			tartemp_flag = true;
+		#endif // LGT_MAC
         #if ENABLED(AUTO_POWER_CONTROL)
           powerManager.power_on();
         #endif

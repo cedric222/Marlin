@@ -34,6 +34,11 @@
 #include "delay.h"
 #include "endstops.h"
 
+#if ENABLED(LGT_MAC)
+#include "LGT_SCR.h"
+	extern PRINTER_KILL_STATUS kill_type;
+#endif
+
 #if ENABLED(HEATER_0_USES_MAX6675)
   #include "MarlinSPI.h"
 #endif
@@ -59,6 +64,11 @@
     static constexpr uint8_t heater_ttbllen_map[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_TEMPTABLE_LEN, HEATER_1_TEMPTABLE_LEN, HEATER_2_TEMPTABLE_LEN, HEATER_3_TEMPTABLE_LEN, HEATER_4_TEMPTABLE_LEN);
   #endif
 #endif
+
+#ifdef LGT_MAC
+	extern void DWIN_MAIN_FUNCTIONS();
+
+#endif // LGT_MAC
 
 Temperature thermalManager;
 
@@ -87,7 +97,7 @@ Temperature thermalManager;
 
 float Temperature::current_temperature[HOTENDS] = { 0.0 };
 int16_t Temperature::current_temperature_raw[HOTENDS] = { 0 },
-        Temperature::target_temperature[HOTENDS] = { 0 };
+        Temperature::target_temperature[HOTENDS] = {0}; //0
 
 #if ENABLED(AUTO_POWER_E_FANS)
   int16_t Temperature::autofan_speed[HOTENDS] = { 0 };
@@ -96,7 +106,7 @@ int16_t Temperature::current_temperature_raw[HOTENDS] = { 0 },
 #if HAS_HEATED_BED
   float Temperature::current_temperature_bed = 0.0;
   int16_t Temperature::current_temperature_bed_raw = 0,
-          Temperature::target_temperature_bed = 0;
+	      Temperature::target_temperature_bed = 0;
   uint8_t Temperature::soft_pwm_amount_bed;
   #ifdef BED_MINTEMP
     int16_t Temperature::bed_minttemp_raw = HEATER_BED_RAW_LO_TEMP;
@@ -427,16 +437,26 @@ uint8_t Temperature::soft_pwm_amount[HOTENDS];
             #endif
           ) {
             if (!heated) {                                          // If not yet reached target...
-              if (current > next_watch_temp) {                      // Over the watch temp?
-                next_watch_temp = current + watch_temp_increase;    // - set the next temp to watch for
-                temp_change_ms = ms + watch_temp_period * 1000UL;   // - move the expiration timer up
-                if (current > watch_temp_target) heated = true;     // - Flag if target temperature reached
-              }
-              else if (ELAPSED(ms, temp_change_ms))                 // Watch timer expired
-                _temp_error(hotend, PSTR(MSG_T_HEATING_FAILED), TEMP_ERR_PSTR(MSG_HEATING_FAILED_LCD, hotend));
+				if (current > next_watch_temp) {                      // Over the watch temp?
+					next_watch_temp = current + watch_temp_increase;    // - set the next temp to watch for
+					temp_change_ms = ms + watch_temp_period * 1000UL;   // - move the expiration timer up
+					if (current > watch_temp_target) heated = true;     // - Flag if target temperature reached
+				}
+				else if (ELAPSED(ms, temp_change_ms))                 // Watch timer expired
+				{
+				#ifdef LGT_MAC
+					kill_type = E_TEMP_KILL;
+				#endif // LGT_MAC
+					_temp_error(hotend, PSTR(MSG_T_HEATING_FAILED), TEMP_ERR_PSTR(MSG_HEATING_FAILED_LCD, hotend));
+				}
             }
-            else if (current < target - (MAX_OVERSHOOT_PID_AUTOTUNE)) // Heated, then temperature fell too far?
-              _temp_error(hotend, PSTR(MSG_T_THERMAL_RUNAWAY), TEMP_ERR_PSTR(MSG_THERMAL_RUNAWAY, hotend));
+			else if (current < target - (MAX_OVERSHOOT_PID_AUTOTUNE)) // Heated, then temperature fell too far?
+			{
+			#ifdef LGT_MAC
+				kill_type = E_RUNAWAY_KILL;
+			#endif // LGT_MAC
+				_temp_error(hotend, PSTR(MSG_T_THERMAL_RUNAWAY), TEMP_ERR_PSTR(MSG_THERMAL_RUNAWAY, hotend));
+			}
           }
         #endif
       } // every 2 seconds
@@ -496,6 +516,9 @@ uint8_t Temperature::soft_pwm_amount[HOTENDS];
         return;
       }
       lcd_update();
+#ifdef LGT_MAC
+	  DWIN_MAIN_FUNCTIONS();
+#endif // LGT_MAC
     }
     disable_all_heaters();
   }
@@ -588,10 +611,22 @@ void Temperature::_temp_error(const int8_t e, const char * const serial_msg, con
 }
 
 void Temperature::max_temp_error(const int8_t e) {
+#ifdef LGT_MAC
+	if (e >= 0)
+		kill_type = E_MAXTEMP_KILL;
+	else
+		kill_type= B_MAXTEMP_KILL;
+#endif // LGT_MAC
   _temp_error(e, PSTR(MSG_T_MAXTEMP), TEMP_ERR_PSTR(MSG_ERR_MAXTEMP, e));
 }
 
 void Temperature::min_temp_error(const int8_t e) {
+#ifdef LGT_MAC
+	if (e >= 0)
+		kill_type = E_MINTEMP_KILL;
+	else
+		kill_type = B_MINTEMP_KILL;
+#endif // LGT_MAC
   _temp_error(e, PSTR(MSG_T_MINTEMP), TEMP_ERR_PSTR(MSG_ERR_MINTEMP, e));
 }
 
@@ -754,7 +789,12 @@ void Temperature::manage_heater() {
   #endif
 
   #if ENABLED(EMERGENCY_PARSER)
-    if (emergency_parser.killed_by_M112) kill(PSTR(MSG_KILLED));
+	if (emergency_parser.killed_by_M112) {
+#ifdef LGT_MAC
+		kill_type = M112_KILL;
+#endif // LGT_MAC
+		kill(PSTR(MSG_KILLED));
+	}
   #endif
 
   if (!temp_meas_ready) return;
@@ -787,8 +827,14 @@ void Temperature::manage_heater() {
     #if WATCH_HOTENDS
       // Make sure temperature is increasing
       if (watch_heater_next_ms[e] && ELAPSED(ms, watch_heater_next_ms[e])) { // Time to check this extruder?
-        if (degHotend(e) < watch_target_temp[e])                             // Failed to increase enough?
-          _temp_error(e, PSTR(MSG_T_HEATING_FAILED), TEMP_ERR_PSTR(MSG_HEATING_FAILED_LCD, e));
+		  if (degHotend(e) < watch_target_temp[e])                             // Failed to increase enough?
+		  {
+		#ifdef LGT_MAC
+			  //LGT_LCD.LGT_Send_Data_To_Screen(0x2000,1);
+			  kill_type = E_TEMP_KILL;
+		#endif // LGT_MAC
+			  _temp_error(e, PSTR(MSG_T_HEATING_FAILED), TEMP_ERR_PSTR(MSG_HEATING_FAILED_LCD, e));
+		  }
         else                                                                 // Start again if the target is still far off
           start_watching_heater(e);
       }
@@ -827,8 +873,14 @@ void Temperature::manage_heater() {
     #if WATCH_THE_BED
       // Make sure temperature is increasing
       if (watch_bed_next_ms && ELAPSED(ms, watch_bed_next_ms)) {        // Time to check the bed?
-        if (degBed() < watch_target_bed_temp)                           // Failed to increase enough?
-          _temp_error(-1, PSTR(MSG_T_HEATING_FAILED), TEMP_ERR_PSTR(MSG_HEATING_FAILED_LCD, -1));
+		  if (degBed() < watch_target_bed_temp)                           // Failed to increase enough?
+		  {
+			#ifdef LGT_MAC
+			  //LGT_LCD.LGT_Send_Data_To_Screen(0x2000, 2);
+			  kill_type = B_TEMP_KILL;
+			#endif // LGT_MAC
+			  _temp_error(-1, PSTR(MSG_T_HEATING_FAILED), TEMP_ERR_PSTR(MSG_HEATING_FAILED_LCD, -1));
+		  }
         else                                                            // Start again if the target is still far off
           start_watching_bed();
       }
@@ -924,6 +976,9 @@ float Temperature::analog2temp(const int raw, const uint8_t e) {
       SERIAL_ERROR_START();
       SERIAL_ERROR((int)e);
       SERIAL_ERRORLNPGM(MSG_INVALID_EXTRUDER_NUM);
+#ifdef LGT_MAC
+	  kill_type = EXTRUDER_KILL;
+#endif // LGT_MAC
       kill(PSTR(MSG_KILLED));
       return 0.0;
     }
@@ -1474,7 +1529,12 @@ void Temperature::init() {
         else if (PENDING(millis(), *timer)) break;
         *state = TRRunaway;
       case TRRunaway:
-        _temp_error(heater_id, PSTR(MSG_T_THERMAL_RUNAWAY), TEMP_ERR_PSTR(MSG_THERMAL_RUNAWAY, heater_id));
+	  {
+		#ifdef LGT_MAC
+			kill_type = E_RUNAWAY_KILL;
+		#endif // LGT_MAC
+		  _temp_error(heater_id, PSTR(MSG_T_THERMAL_RUNAWAY), TEMP_ERR_PSTR(MSG_THERMAL_RUNAWAY, heater_id));
+	  }
     }
   }
 

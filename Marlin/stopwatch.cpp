@@ -28,6 +28,7 @@ Stopwatch::State Stopwatch::state;
 millis_t Stopwatch::accumulator;
 millis_t Stopwatch::startTimestamp;
 millis_t Stopwatch::stopTimestamp;
+//extern bool sd_isprinting;
 
 bool Stopwatch::stop() {
   #if ENABLED(DEBUG_STOPWATCH)
@@ -37,6 +38,7 @@ bool Stopwatch::stop() {
   if (isRunning() || isPaused()) {
     state = STOPPED;
     stopTimestamp = millis();
+	//sd_isprinting = false;
     return true;
   }
   else return false;
@@ -50,6 +52,7 @@ bool Stopwatch::pause() {
   if (isRunning()) {
     state = PAUSED;
     stopTimestamp = millis();
+	//sd_isprinting = false;
     return true;
   }
   else return false;
@@ -66,6 +69,7 @@ bool Stopwatch::start() {
 
     state = RUNNING;
     startTimestamp = millis();
+	//sd_isprinting = true;
     return true;
   }
   else return false;
@@ -78,6 +82,7 @@ void Stopwatch::resume(const millis_t duration) {
 
   reset();
   if ((accumulator = duration)) state = RUNNING;
+  //sd_isprinting = true;
 }
 
 void Stopwatch::reset() {
@@ -89,6 +94,7 @@ void Stopwatch::reset() {
   startTimestamp = 0;
   stopTimestamp = 0;
   accumulator = 0;
+  //sd_isprinting = false;
 }
 
 millis_t Stopwatch::duration() {

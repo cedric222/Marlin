@@ -28,6 +28,10 @@
 #if USE_MARLINSERIAL
   #include "MarlinSerial.h"
   #define MYSERIAL0 customizedSerial
+#if ENABLED(serial_port1)
+	#include "MarlinSerial1.h"
+	#define MYSERIAL1 customizedSerial1
+#endif
 #else
   #include <HardwareSerial.h>
   #if ENABLED(BLUETOOTH)

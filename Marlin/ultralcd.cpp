@@ -867,7 +867,7 @@ void lcd_quick_feedback(const bool clear_buttons) {
 
   #if ENABLED(POWER_LOSS_RECOVERY)
 
-    static void lcd_power_loss_recovery_resume() {
+   /* static*/ void lcd_power_loss_recovery_resume() {
       char cmd[20];
 
       // Return to status now

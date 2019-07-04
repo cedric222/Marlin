@@ -55,6 +55,12 @@
 #include "parser.h"
 #include "vector_3.h"
 
+#ifdef LGT_MAC
+#include "LGT_SCR.h"
+//extern bool led_on;
+#endif // LGT_MAC
+
+
 #if ENABLED(MESH_BED_LEVELING)
   #include "mesh_bed_leveling.h"
 #endif
@@ -640,6 +646,11 @@ void MarlinSettings::postprocess() {
     EEPROM_WRITE(lcd_preheat_bed_temp);
     EEPROM_WRITE(lcd_preheat_fan_speed);
 
+//#ifdef LGT_MAC
+//	eeprom_write_dword((uint32_t*)EEPROM_INDEX, 0);
+//#endif // LGT_MAC
+
+
     for (uint8_t e = 0; e < MAX_EXTRUDERS; e++) {
 
       #if ENABLED(PIDTEMP)
@@ -978,7 +989,6 @@ void MarlinSettings::postprocess() {
 
       EEPROM_WRITE(version);
       EEPROM_WRITE(final_crc);
-
       // Report storage size
       #if ENABLED(EEPROM_CHITCHAT)
         SERIAL_ECHO_START();
@@ -1254,6 +1264,12 @@ void MarlinSettings::postprocess() {
       EEPROM_READ(lcd_preheat_hotend_temp); // 2 floats
       EEPROM_READ(lcd_preheat_bed_temp);    // 2 floats
       EEPROM_READ(lcd_preheat_fan_speed);   // 2 floats
+
+//#ifdef LGT_MAC
+//	  eeprom_read_dword((const uint32_t*)EEPROM_INDEX);
+//#endif // LGT_MAC
+
+
 
       //EEPROM_ASSERT(
       //  WITHIN(lcd_preheat_fan_speed, 0, 255),
@@ -1900,6 +1916,9 @@ void MarlinSettings::reset() {
     lcd_preheat_fan_speed[0] = PREHEAT_1_FAN_SPEED;
     lcd_preheat_fan_speed[1] = PREHEAT_2_FAN_SPEED;
   #endif
+//#ifdef LGT_MAC
+//	//led_on = true;
+//#endif // LGT_MAC
 
   #if ENABLED(PIDTEMP)
     #if ENABLED(PID_PARAMS_PER_HOTEND) && HOTENDS > 1

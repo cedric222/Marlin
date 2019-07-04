@@ -1698,8 +1698,10 @@ static_assert(COUNT(sanity_arr_3) <= NUM_AXIS_N, "DEFAULT_MAX_ACCELERATION has t
   #endif
 #endif
 
-#if ENABLED(POWER_LOSS_RECOVERY) && !ENABLED(ULTIPANEL)
-  #error "POWER_LOSS_RECOVERY currently requires an LCD Controller."
+#ifndef LGT_MAC
+	#if ENABLED(POWER_LOSS_RECOVERY) && !ENABLED(ULTIPANEL)
+		#error "POWER_LOSS_RECOVERY currently requires an LCD Controller."
+	#endif
 #endif
 
 #endif // _SANITYCHECK_H_
